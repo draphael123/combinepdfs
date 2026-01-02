@@ -5,22 +5,22 @@ import './globals.css'
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: 'PDF Merger - Free Online PDF Combiner Tool',
-  description: 'Merge multiple PDF files into one document instantly. Free, secure, and privacy-focused. All processing happens in your browser - your files never leave your device.',
-  keywords: ['PDF merger', 'PDF combiner', 'merge PDF', 'combine PDF', 'PDF tool', 'free PDF merger', 'online PDF tool'],
-  authors: [{ name: 'PDF Merger' }],
-  creator: 'PDF Merger',
-  publisher: 'PDF Merger',
+  title: 'Fountain: File Merger - Free Online File Combiner Tool',
+  description: 'Merge multiple PDF, CSV, Word documents, and images into one file instantly. Free, secure, and privacy-focused. All processing happens in your browser - your files never leave your device.',
+  keywords: ['file merger', 'PDF merger', 'PDF combiner', 'merge PDF', 'combine files', 'file tool', 'free file merger', 'online file tool', 'merge images', 'merge CSV', 'merge Word'],
+  authors: [{ name: 'Fountain: File Merger' }],
+  creator: 'Fountain: File Merger',
+  publisher: 'Fountain: File Merger',
   openGraph: {
-    title: 'PDF Merger - Free Online PDF Combiner Tool',
-    description: 'Merge multiple PDF files into one document instantly. Free, secure, and privacy-focused.',
+    title: 'Fountain: File Merger - Free Online File Combiner Tool',
+    description: 'Merge multiple PDF, CSV, Word documents, and images into one file instantly. Free, secure, and privacy-focused.',
     type: 'website',
     locale: 'en_US',
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'PDF Merger - Free Online PDF Combiner Tool',
-    description: 'Merge multiple PDF files into one document instantly. Free, secure, and privacy-focused.',
+    title: 'Fountain: File Merger - Free Online File Combiner Tool',
+    description: 'Merge multiple PDF, CSV, Word documents, and images into one file instantly. Free, secure, and privacy-focused.',
   },
   robots: {
     index: true,

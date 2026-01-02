@@ -543,7 +543,7 @@ export default function Home() {
               </svg>
             </div>
             <h1 className="text-5xl sm:text-6xl font-extrabold mb-4 bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 dark:from-indigo-400 dark:via-purple-400 dark:to-pink-400 bg-clip-text text-transparent">
-              File Merger
+              Fountain: File Merger
             </h1>
             <p className="text-xl sm:text-2xl text-gray-700 dark:text-gray-300 font-medium">
               Merge PDFs, CSV files, Word documents, and images into one
@@ -575,7 +575,7 @@ export default function Home() {
             <div className="bg-gradient-to-r from-indigo-50 via-purple-50 to-pink-50 dark:from-indigo-900/20 dark:via-purple-900/20 dark:to-pink-900/20 rounded-3xl p-8 sm:p-10 border border-indigo-200/50 dark:border-indigo-800/50 shadow-xl">
               <div className="text-center mb-8">
                 <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 dark:text-white mb-4">
-                  Why Choose Our File Merger?
+                  Why Choose Fountain: File Merger?
                 </h2>
                 <p className="text-lg text-gray-600 dark:text-gray-300 max-w-2xl mx-auto">
                   The most secure, fast, and user-friendly way to combine your PDF, CSV, Word documents, and images

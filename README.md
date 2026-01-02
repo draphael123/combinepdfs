@@ -1,16 +1,19 @@
-# PDF Merger
+# Fountain: File Merger
 
-A modern, free, and privacy-focused web application for merging multiple PDF files into a single document. Built with Next.js and deployed on Vercel.
+A modern, free, and privacy-focused web application for merging multiple files (PDF, CSV, Word documents, and images) into a single document. Built with Next.js and deployed on Vercel.
 
 🌐 **Live Demo**: [View on Vercel](https://your-vercel-url.vercel.app) (Update this with your actual Vercel URL)
 
 ## Features
 
 - 📄 Merge multiple PDF files into one
-- 🔄 Reorder PDFs before merging
+- 📊 Merge CSV files with header preservation
+- 📝 Merge Word documents (.docx, .doc)
+- 🖼️ Merge JPG/JPEG images (converted to PDF)
+- 🔄 Reorder files before merging
 - 🎨 Modern, responsive UI with dark mode support
 - 🔒 Privacy-first: All processing happens in your browser
-- ⚡ Fast and efficient PDF merging using pdf-lib
+- ⚡ Fast and efficient file merging
 
 ## Getting Started
 
@@ -51,11 +54,11 @@ vercel
 
 ## How to Use
 
-1. Click the upload area or drag and drop PDF files
-2. Select multiple PDF files you want to merge
+1. Click the upload area or drag and drop files (PDF, CSV, Word, or images)
+2. Select multiple files of the same type you want to merge
 3. Reorder files using the up/down arrows if needed
-4. Click "Merge PDFs" to combine all files
-5. The merged PDF will automatically download
+4. Click "Merge Files" to combine all files
+5. The merged file will automatically download
 
 ## Technology Stack
 
@@ -63,6 +66,9 @@ vercel
 - **TypeScript** - Type safety
 - **Tailwind CSS** - Styling
 - **pdf-lib** - PDF manipulation library
+- **papaparse** - CSV parsing and merging
+- **docx** - Word document creation
+- **mammoth** - Word document reading
 
 ## Contributing
 
@@ -74,5 +80,5 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## Privacy
 
-All PDF processing happens entirely in your browser. Your files never leave your device and are never uploaded to any server. This ensures complete privacy and security for your documents.
+All file processing happens entirely in your browser. Your files never leave your device and are never uploaded to any server. This ensures complete privacy and security for your documents.
 
