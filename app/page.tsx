@@ -65,10 +65,8 @@ export default function Home() {
 
       const mergedPdfBytes = await mergedPdf.save()
       // Convert Uint8Array to ArrayBuffer for Blob compatibility
-      const arrayBuffer = mergedPdfBytes.buffer.slice(
-        mergedPdfBytes.byteOffset,
-        mergedPdfBytes.byteOffset + mergedPdfBytes.byteLength
-      )
+      const arrayBuffer = new ArrayBuffer(mergedPdfBytes.length)
+      new Uint8Array(arrayBuffer).set(mergedPdfBytes)
       const blob = new Blob([arrayBuffer], { type: 'application/pdf' })
       const url = URL.createObjectURL(blob)
       
