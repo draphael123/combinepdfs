@@ -286,6 +286,112 @@ export default function Home() {
             </div>
           </div>
 
+          {/* Value Proposition Section */}
+          <div className="mb-12 animate-slide-up" style={{ animationDelay: '0.15s' }}>
+            <div className="bg-gradient-to-r from-indigo-50 via-purple-50 to-pink-50 dark:from-indigo-900/20 dark:via-purple-900/20 dark:to-pink-900/20 rounded-3xl p-8 sm:p-10 border border-indigo-200/50 dark:border-indigo-800/50 shadow-xl">
+              <div className="text-center mb-8">
+                <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 dark:text-white mb-4">
+                  Why Choose Our PDF Merger?
+                </h2>
+                <p className="text-lg text-gray-600 dark:text-gray-300 max-w-2xl mx-auto">
+                  The most secure, fast, and user-friendly way to combine your PDF documents
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {/* Privacy & Security */}
+                <div className="bg-white/60 dark:bg-gray-800/60 backdrop-blur-sm rounded-2xl p-6 border border-white/50 dark:border-gray-700/50 hover:shadow-lg transition-all hover:scale-105">
+                  <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-xl flex items-center justify-center mb-4 shadow-lg">
+                    <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                    </svg>
+                  </div>
+                  <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">100% Private & Secure</h3>
+                  <p className="text-gray-600 dark:text-gray-300 text-sm leading-relaxed">
+                    All processing happens directly in your browser. Your files never leave your device or get uploaded to any server. Complete privacy guaranteed.
+                  </p>
+                </div>
+
+                {/* Free & No Limits */}
+                <div className="bg-white/60 dark:bg-gray-800/60 backdrop-blur-sm rounded-2xl p-6 border border-white/50 dark:border-gray-700/50 hover:shadow-lg transition-all hover:scale-105">
+                  <div className="w-12 h-12 bg-gradient-to-br from-green-500 to-emerald-500 rounded-xl flex items-center justify-center mb-4 shadow-lg">
+                    <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  </div>
+                  <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Completely Free</h3>
+                  <p className="text-gray-600 dark:text-gray-300 text-sm leading-relaxed">
+                    No hidden fees, no subscriptions, no watermarks. Merge unlimited PDFs for free. No registration or account required.
+                  </p>
+                </div>
+
+                {/* Fast & Efficient */}
+                <div className="bg-white/60 dark:bg-gray-800/60 backdrop-blur-sm rounded-2xl p-6 border border-white/50 dark:border-gray-700/50 hover:shadow-lg transition-all hover:scale-105">
+                  <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-pink-500 rounded-xl flex items-center justify-center mb-4 shadow-lg">
+                    <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                    </svg>
+                  </div>
+                  <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Lightning Fast</h3>
+                  <p className="text-gray-600 dark:text-gray-300 text-sm leading-relaxed">
+                    Process and merge PDFs instantly. No waiting for uploads or server processing. Everything happens locally in your browser.
+                  </p>
+                </div>
+
+                {/* Easy to Use */}
+                <div className="bg-white/60 dark:bg-gray-800/60 backdrop-blur-sm rounded-2xl p-6 border border-white/50 dark:border-gray-700/50 hover:shadow-lg transition-all hover:scale-105">
+                  <div className="w-12 h-12 bg-gradient-to-br from-orange-500 to-red-500 rounded-xl flex items-center justify-center mb-4 shadow-lg">
+                    <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  </div>
+                  <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Super Easy</h3>
+                  <p className="text-gray-600 dark:text-gray-300 text-sm leading-relaxed">
+                    Drag and drop your files, click merge, and you're done. Intuitive interface with no learning curve. Perfect for everyone.
+                  </p>
+                </div>
+
+                {/* No Software Required */}
+                <div className="bg-white/60 dark:bg-gray-800/60 backdrop-blur-sm rounded-2xl p-6 border border-white/50 dark:border-gray-700/50 hover:shadow-lg transition-all hover:scale-105">
+                  <div className="w-12 h-12 bg-gradient-to-br from-indigo-500 to-purple-500 rounded-xl flex items-center justify-center mb-4 shadow-lg">
+                    <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                    </svg>
+                  </div>
+                  <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">No Installation</h3>
+                  <p className="text-gray-600 dark:text-gray-300 text-sm leading-relaxed">
+                    Works directly in your web browser. No downloads, no installations, no plugins. Access from any device, anywhere.
+                  </p>
+                </div>
+
+                {/* Professional Quality */}
+                <div className="bg-white/60 dark:bg-gray-800/60 backdrop-blur-sm rounded-2xl p-6 border border-white/50 dark:border-gray-700/50 hover:shadow-lg transition-all hover:scale-105">
+                  <div className="w-12 h-12 bg-gradient-to-br from-pink-500 to-rose-500 rounded-xl flex items-center justify-center mb-4 shadow-lg">
+                    <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
+                    </svg>
+                  </div>
+                  <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">High Quality Output</h3>
+                  <p className="text-gray-600 dark:text-gray-300 text-sm leading-relaxed">
+                    Maintains the original quality of your PDFs. All pages, formatting, and content are preserved perfectly in the merged document.
+                  </p>
+                </div>
+              </div>
+
+              {/* Call to Action */}
+              <div className="mt-8 text-center">
+                <div className="inline-flex items-center gap-3 px-6 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 rounded-full shadow-lg">
+                  <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                  </svg>
+                  <p className="text-white font-semibold">
+                    Start merging your PDFs now - it only takes seconds!
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+
           {/* Main Card */}
           <div className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-xl rounded-3xl shadow-2xl border border-white/20 dark:border-gray-700/50 p-6 sm:p-8 lg:p-10 animate-slide-up" style={{ animationDelay: '0.1s' }}>
             {/* File Upload Area */}
