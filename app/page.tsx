@@ -71,7 +71,9 @@ export default function Home() {
           const fileBytes = await file.arrayBuffer()
           const pdf = await PDFDocument.load(fileBytes)
           const pageCount = pdf.getPageCount()
-          return { ...file, pageCount } as FileWithPages
+          // Preserve the File object and add pageCount property
+          const fileWithPages = Object.assign(file, { pageCount }) as FileWithPages
+          return fileWithPages
         } catch (err) {
           setError(`"${file.name}" is not a valid PDF file or is corrupted.`)
           return null
@@ -427,7 +429,7 @@ export default function Home() {
                 <div className="space-y-3">
                   {files.map((file, index) => (
                     <div
-                      key={`${file.name}-${index}`}
+                      key={`${file?.name || index}-${index}`}
                       onClick={() => setSelectedFileIndex(index)}
                       className={`group flex items-center justify-between p-4 rounded-xl transition-all duration-200 cursor-pointer ${
                         selectedFileIndex === index
@@ -442,7 +444,7 @@ export default function Home() {
                           setSelectedFileIndex(index)
                         }
                       }}
-                      aria-label={`File ${index + 1}: ${file.name}`}
+                      aria-label={`File ${index + 1}: ${file?.name || 'Unknown file'}`}
                     >
                       <div className="flex items-center flex-1 min-w-0">
                         <div className={`flex-shrink-0 w-12 h-12 rounded-lg flex items-center justify-center mr-4 transition-all ${
@@ -463,14 +465,14 @@ export default function Home() {
                         </div>
                         <div className="flex-1 min-w-0">
                           <span className="text-sm font-semibold text-gray-900 dark:text-white truncate block">
-                            {file.name}
+                            {file?.name || 'Unknown file'}
                           </span>
                           <div className="flex items-center gap-3 text-xs text-gray-500 dark:text-gray-400 mt-1">
                             <span className="flex items-center gap-1">
                               <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
                                 <path d="M10 2a6 6 0 00-6 6v3.586l-.707.707A1 1 0 004 14h12a1 1 0 00.707-1.707L16 11.586V8a6 6 0 00-6-6zM10 18a3 3 0 01-3-3h6a3 3 0 01-3 3z" />
                               </svg>
-                              {formatFileSize(file.size)}
+                              {formatFileSize(file?.size || 0)}
                             </span>
                             {file.pageCount !== undefined && (
                               <>
@@ -496,7 +498,7 @@ export default function Home() {
                           disabled={index === 0}
                           className="p-2 text-gray-600 dark:text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 disabled:opacity-30 disabled:cursor-not-allowed transition-all rounded-lg"
                           title="Move up (Alt+↑)"
-                          aria-label={`Move ${file.name} up`}
+                          aria-label={`Move ${file?.name || 'file'} up`}
                         >
                           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
@@ -510,7 +512,7 @@ export default function Home() {
                           disabled={index === files.length - 1}
                           className="p-2 text-gray-600 dark:text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 disabled:opacity-30 disabled:cursor-not-allowed transition-all rounded-lg"
                           title="Move down (Alt+↓)"
-                          aria-label={`Move ${file.name} down`}
+                          aria-label={`Move ${file?.name || 'file'} down`}
                         >
                           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
@@ -523,7 +525,7 @@ export default function Home() {
                           }}
                           className="p-2 text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/20 transition-all rounded-lg"
                           title="Remove (Delete)"
-                          aria-label={`Remove ${file.name}`}
+                          aria-label={`Remove ${file?.name || 'file'}`}
                         >
                           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
