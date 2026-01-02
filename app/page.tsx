@@ -6,7 +6,7 @@ import Papa from 'papaparse'
 import { Document, Packer, Paragraph, TextRun } from 'docx'
 import mammoth from 'mammoth'
 
-type FileType = 'pdf' | 'csv' | 'docx' | 'doc'
+type FileType = 'pdf' | 'csv' | 'docx' | 'doc' | 'jpg' | 'jpeg'
 
 interface FileWithMetadata extends File {
   fileType?: FileType
@@ -36,6 +36,10 @@ export default function Home() {
     if (type === 'text/csv' || type === 'application/vnd.ms-excel' || name.endsWith('.csv')) return 'csv'
     if (type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' || name.endsWith('.docx')) return 'docx'
     if (type === 'application/msword' || name.endsWith('.doc')) return 'doc'
+    if (type === 'image/jpeg' || name.endsWith('.jpg') || name.endsWith('.jpeg')) {
+      // Normalize both jpg and jpeg to 'jpg' for merging compatibility
+      return 'jpg'
+    }
     return null
   }
 
@@ -46,6 +50,8 @@ export default function Home() {
       case 'csv': return '.csv'
       case 'docx': return '.docx'
       case 'doc': return '.doc'
+      case 'jpg':
+      case 'jpeg': return '.pdf' // Images are converted to PDF
     }
   }
 
@@ -81,6 +87,9 @@ export default function Home() {
       case 'docx':
       case 'doc':
         return '📝'
+      case 'jpg':
+      case 'jpeg':
+        return '🖼️'
     }
   }
 
@@ -94,6 +103,9 @@ export default function Home() {
       case 'docx':
       case 'doc':
         return 'from-blue-500 to-cyan-500'
+      case 'jpg':
+      case 'jpeg':
+        return 'from-yellow-500 to-orange-500'
     }
   }
 
@@ -114,7 +126,7 @@ export default function Home() {
     }
 
     if (invalidFiles.length > 0) {
-      setError(`Some files are not supported. Supported formats: PDF, CSV, DOCX, DOC. Invalid files: ${invalidFiles.join(', ')}`)
+      setError(`Some files are not supported. Supported formats: PDF, CSV, DOCX, DOC, JPG, JPEG. Invalid files: ${invalidFiles.join(', ')}`)
     }
 
     // Check if all files are the same type
@@ -149,6 +161,24 @@ export default function Home() {
               const arrayBuffer = await file.arrayBuffer()
               await mammoth.extractRawText({ arrayBuffer })
               return file
+            } else if (file.fileType === 'jpg') {
+              // Validate image by trying to load it
+              const arrayBuffer = await file.arrayBuffer()
+              // Create image to validate
+              return new Promise<FileWithMetadata>((resolve, reject) => {
+                const blob = new Blob([arrayBuffer], { type: 'image/jpeg' })
+                const img = new Image()
+                const url = URL.createObjectURL(blob)
+                img.onload = () => {
+                  URL.revokeObjectURL(url)
+                  resolve(file)
+                }
+                img.onerror = () => {
+                  URL.revokeObjectURL(url)
+                  reject(new Error('Invalid image'))
+                }
+                img.src = url
+              })
             } else {
               // DOC files - just accept them
               return file
@@ -364,6 +394,40 @@ export default function Home() {
     return await Packer.toBlob(doc).then(blob => blob.arrayBuffer()).then(buffer => new Uint8Array(buffer))
   }
 
+  // Merge images (convert to PDF)
+  const mergeImages = async (filesToMerge: FileWithMetadata[]): Promise<Uint8Array> => {
+    const mergedPdf = await PDFDocument.create()
+
+    for (let i = 0; i < filesToMerge.length; i++) {
+      setMergeProgress({ current: i + 1, total: filesToMerge.length })
+      const file = filesToMerge[i]
+      const arrayBuffer = await file.arrayBuffer()
+      
+      // Convert image to PDF page
+      let image
+      try {
+        // Embed JPG/JPEG image
+        image = await mergedPdf.embedJpg(arrayBuffer)
+
+        // Get image dimensions
+        const imageDims = image.scale(1)
+        
+        // Create a page with the image dimensions
+        const page = mergedPdf.addPage([imageDims.width, imageDims.height])
+        page.drawImage(image, {
+          x: 0,
+          y: 0,
+          width: imageDims.width,
+          height: imageDims.height,
+        })
+      } catch (err) {
+        throw new Error(`Failed to process image "${file.name}": ${err instanceof Error ? err.message : 'Unknown error'}`)
+      }
+    }
+
+    return await mergedPdf.save()
+  }
+
   // Main merge function
   const mergeFiles = async () => {
     if (files.length < 2) {
@@ -404,6 +468,12 @@ export default function Home() {
           type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' 
         })
         filename = outputFilename.endsWith('.docx') ? outputFilename : `${outputFilename}.docx`
+      } else if (fileType === 'jpg') {
+        const mergedBytes = await mergeImages(files)
+        const arrayBuffer = new ArrayBuffer(mergedBytes.length)
+        new Uint8Array(arrayBuffer).set(mergedBytes)
+        blob = new Blob([arrayBuffer], { type: 'application/pdf' })
+        filename = outputFilename.endsWith('.pdf') ? outputFilename : `${outputFilename}.pdf`
       } else {
         throw new Error('Unsupported file type')
       }
@@ -476,7 +546,7 @@ export default function Home() {
               File Merger
             </h1>
             <p className="text-xl sm:text-2xl text-gray-700 dark:text-gray-300 font-medium">
-              Merge PDFs, CSV files, and Word documents into one
+              Merge PDFs, CSV files, Word documents, and images into one
             </p>
             <div className="flex items-center justify-center gap-6 mt-6 text-sm text-gray-600 dark:text-gray-400">
               <div className="flex items-center gap-2">
@@ -508,7 +578,7 @@ export default function Home() {
                   Why Choose Our File Merger?
                 </h2>
                 <p className="text-lg text-gray-600 dark:text-gray-300 max-w-2xl mx-auto">
-                  The most secure, fast, and user-friendly way to combine your PDF, CSV, and Word documents
+                  The most secure, fast, and user-friendly way to combine your PDF, CSV, Word documents, and images
                 </p>
               </div>
 
@@ -548,7 +618,7 @@ export default function Home() {
                   </div>
                   <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Multiple Formats</h3>
                   <p className="text-gray-600 dark:text-gray-300 text-sm leading-relaxed">
-                    Support for PDF, CSV, and Word documents. Merge files of the same type together seamlessly.
+                    Support for PDF, CSV, Word documents, and images (JPG/JPEG). Images are automatically converted to PDF pages. Merge files of the same type together seamlessly.
                   </p>
                 </div>
               </div>
@@ -618,7 +688,7 @@ export default function Home() {
                       {' '}or drag and drop
                     </p>
                     <p className="text-sm text-gray-500 dark:text-gray-400">
-                      PDF, CSV, DOCX, or DOC files • Max 500MB total
+                      PDF, CSV, DOCX, DOC, JPG, or JPEG files • Max 500MB total
                     </p>
                   </div>
                   <input
@@ -626,7 +696,7 @@ export default function Home() {
                     ref={fileInputRef}
                     type="file"
                     className="hidden"
-                    accept=".pdf,.csv,.docx,.doc,application/pdf,text/csv,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/msword"
+                    accept=".pdf,.csv,.docx,.doc,.jpg,.jpeg,application/pdf,text/csv,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/msword,image/jpeg"
                     multiple
                     onChange={handleFileSelect}
                     aria-label="Upload files"
