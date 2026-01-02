@@ -1,6 +1,8 @@
 # PDF Merger
 
-A modern web application for merging multiple PDF files into a single document. Built with Next.js and deployed on Vercel.
+A modern, free, and privacy-focused web application for merging multiple PDF files into a single document. Built with Next.js and deployed on Vercel.
+
+🌐 **Live Demo**: [View on Vercel](https://your-vercel-url.vercel.app) (Update this with your actual Vercel URL)
 
 ## Features
 
@@ -62,7 +64,15 @@ vercel
 - **Tailwind CSS** - Styling
 - **pdf-lib** - PDF manipulation library
 
+## Contributing
+
+Contributions, issues, and feature requests are welcome! Feel free to check the [issues page](https://github.com/draphael123/combinepdfs/issues).
+
 ## License
 
-MIT
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## Privacy
+
+All PDF processing happens entirely in your browser. Your files never leave your device and are never uploaded to any server. This ensures complete privacy and security for your documents.
 
