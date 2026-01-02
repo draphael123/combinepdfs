@@ -32,14 +32,20 @@ export default function Home() {
     const name = file.name.toLowerCase()
     const type = file.type.toLowerCase()
     
-    if (type === 'application/pdf' || name.endsWith('.pdf')) return 'pdf'
-    if (type === 'text/csv' || type === 'application/vnd.ms-excel' || name.endsWith('.csv')) return 'csv'
-    if (type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' || name.endsWith('.docx')) return 'docx'
-    if (type === 'application/msword' || name.endsWith('.doc')) return 'doc'
-    if (type === 'image/jpeg' || name.endsWith('.jpg') || name.endsWith('.jpeg')) {
-      // Normalize both jpg and jpeg to 'jpg' for merging compatibility
-      return 'jpg'
-    }
+    // Check by file extension first (more reliable)
+    if (name.endsWith('.pdf')) return 'pdf'
+    if (name.endsWith('.csv')) return 'csv'
+    if (name.endsWith('.docx')) return 'docx'
+    if (name.endsWith('.doc')) return 'doc'
+    if (name.endsWith('.jpg') || name.endsWith('.jpeg') || name.endsWith('.jpe')) return 'jpg'
+    
+    // Then check by MIME type
+    if (type === 'application/pdf') return 'pdf'
+    if (type === 'text/csv' || type === 'text/comma-separated-values' || type === 'application/vnd.ms-excel') return 'csv'
+    if (type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') return 'docx'
+    if (type === 'application/msword') return 'doc'
+    if (type === 'image/jpeg' || type === 'image/jpg') return 'jpg'
+    
     return null
   }
 
@@ -687,9 +693,17 @@ export default function Home() {
                       </span>
                       {' '}or drag and drop
                     </p>
-                    <p className="text-sm text-gray-500 dark:text-gray-400">
+                    <p className="text-sm text-gray-500 dark:text-gray-400 mb-2">
                       PDF, CSV, DOCX, DOC, JPG, or JPEG files • Max 500MB total
                     </p>
+                    <div className="flex flex-wrap items-center justify-center gap-2 mt-2">
+                      <span className="px-2 py-1 text-xs font-medium bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 rounded">PDF</span>
+                      <span className="px-2 py-1 text-xs font-medium bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 rounded">CSV</span>
+                      <span className="px-2 py-1 text-xs font-medium bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded">DOCX</span>
+                      <span className="px-2 py-1 text-xs font-medium bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded">DOC</span>
+                      <span className="px-2 py-1 text-xs font-medium bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-300 rounded">JPG</span>
+                      <span className="px-2 py-1 text-xs font-medium bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-300 rounded">JPEG</span>
+                    </div>
                   </div>
                   <input
                     id="file-upload"
@@ -699,7 +713,7 @@ export default function Home() {
                     accept=".pdf,.csv,.docx,.doc,.jpg,.jpeg,application/pdf,text/csv,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/msword,image/jpeg"
                     multiple
                     onChange={handleFileSelect}
-                    aria-label="Upload files"
+                    aria-label="Upload files (PDF, CSV, Word, or Images)"
                   />
                 </label>
               </div>
@@ -740,10 +754,28 @@ export default function Home() {
                   <span className="text-2xl">{getFileTypeIcon(currentFileType)}</span>
                   <div>
                     <p className="font-semibold text-gray-900 dark:text-white">
-                      Merging {currentFileType.toUpperCase()} files
+                      Merging {currentFileType === 'jpg' ? 'JPG/JPEG' : currentFileType.toUpperCase()} files
                     </p>
                     <p className="text-sm text-gray-600 dark:text-gray-300">
                       All files must be of the same type
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Helpful message when no files */}
+            {files.length === 0 && (
+              <div className="mb-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-xl border border-blue-200 dark:border-blue-800 animate-fade-in">
+                <div className="flex items-start gap-3">
+                  <svg className="w-5 h-5 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                  </svg>
+                  <div>
+                    <p className="font-semibold text-blue-900 dark:text-blue-200 mb-1">Supported File Types</p>
+                    <p className="text-sm text-blue-800 dark:text-blue-300">
+                      You can merge: <strong>PDF files</strong>, <strong>CSV files</strong>, <strong>Word documents</strong> (.docx, .doc), or <strong>Images</strong> (JPG, JPEG). 
+                      All files in a single merge must be the same type. Images will be converted to PDF pages.
                     </p>
                   </div>
                 </div>
