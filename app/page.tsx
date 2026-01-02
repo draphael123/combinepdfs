@@ -2,34 +2,55 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { PDFDocument } from 'pdf-lib'
+import Papa from 'papaparse'
+import { Document, Packer, Paragraph, TextRun } from 'docx'
+import mammoth from 'mammoth'
 
-interface FileWithPages extends File {
+type FileType = 'pdf' | 'csv' | 'docx' | 'doc'
+
+interface FileWithMetadata extends File {
+  fileType?: FileType
   pageCount?: number
+  rowCount?: number
 }
 
 export default function Home() {
-  const [files, setFiles] = useState<FileWithPages[]>([])
+  const [files, setFiles] = useState<FileWithMetadata[]>([])
   const [isMerging, setIsMerging] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
   const [isDragging, setIsDragging] = useState(false)
   const [mergeProgress, setMergeProgress] = useState({ current: 0, total: 0 })
-  const [outputFilename, setOutputFilename] = useState('merged.pdf')
+  const [outputFilename, setOutputFilename] = useState('merged')
   const [selectedFileIndex, setSelectedFileIndex] = useState<number | null>(null)
   const [showInstructions, setShowInstructions] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const dropZoneRef = useRef<HTMLDivElement>(null)
 
+  // Detect file type
+  const getFileType = (file: File): FileType | null => {
+    const name = file.name.toLowerCase()
+    const type = file.type.toLowerCase()
+    
+    if (type === 'application/pdf' || name.endsWith('.pdf')) return 'pdf'
+    if (type === 'text/csv' || type === 'application/vnd.ms-excel' || name.endsWith('.csv')) return 'csv'
+    if (type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' || name.endsWith('.docx')) return 'docx'
+    if (type === 'application/msword' || name.endsWith('.doc')) return 'doc'
+    return null
+  }
+
+  // Get default extension based on file type
+  const getDefaultExtension = (fileType: FileType): string => {
+    switch (fileType) {
+      case 'pdf': return '.pdf'
+      case 'csv': return '.csv'
+      case 'docx': return '.docx'
+      case 'doc': return '.doc'
+    }
+  }
+
   // Load files from localStorage on mount
   useEffect(() => {
-    const savedFiles = localStorage.getItem('pdfMergerFiles')
-    if (savedFiles) {
-      try {
-        const fileNames = JSON.parse(savedFiles)
-      } catch (e) {
-        // Ignore parse errors
-      }
-    }
     const savedFilename = localStorage.getItem('pdfMergerFilename')
     if (savedFilename) {
       setOutputFilename(savedFilename)
@@ -50,43 +71,112 @@ export default function Home() {
     return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + ' ' + sizes[i]
   }
 
+  // Get file type icon
+  const getFileTypeIcon = (fileType: FileType) => {
+    switch (fileType) {
+      case 'pdf':
+        return '📄'
+      case 'csv':
+        return '📊'
+      case 'docx':
+      case 'doc':
+        return '📝'
+    }
+  }
+
+  // Get file type color
+  const getFileTypeColor = (fileType: FileType) => {
+    switch (fileType) {
+      case 'pdf':
+        return 'from-red-500 to-pink-500'
+      case 'csv':
+        return 'from-green-500 to-emerald-500'
+      case 'docx':
+      case 'doc':
+        return 'from-blue-500 to-cyan-500'
+    }
+  }
+
   // Validate and add files
   const addFiles = useCallback((newFiles: File[]) => {
-    const pdfFiles = newFiles.filter(file => file.type === 'application/pdf')
-    
-    if (pdfFiles.length !== newFiles.length) {
-      setError('Some files are not PDFs. Only PDF files are supported.')
-      return
+    const validFiles: FileWithMetadata[] = []
+    const invalidFiles: string[] = []
+
+    for (const file of newFiles) {
+      const fileType = getFileType(file)
+      if (!fileType) {
+        invalidFiles.push(file.name)
+        continue
+      }
+
+      const fileWithType = Object.assign(file, { fileType }) as FileWithMetadata
+      validFiles.push(fileWithType)
     }
 
-    const totalSize = [...files, ...pdfFiles].reduce((sum, file) => sum + file.size, 0)
-    const maxSize = 500 * 1024 * 1024
-    if (totalSize > maxSize) {
-      setError(`Total file size exceeds 500MB limit. Please select smaller files.`)
-      return
+    if (invalidFiles.length > 0) {
+      setError(`Some files are not supported. Supported formats: PDF, CSV, DOCX, DOC. Invalid files: ${invalidFiles.join(', ')}`)
     }
 
-    Promise.all(
-      pdfFiles.map(async (file) => {
-        try {
-          const fileBytes = await file.arrayBuffer()
-          const pdf = await PDFDocument.load(fileBytes)
-          const pageCount = pdf.getPageCount()
-          // Preserve the File object and add pageCount property
-          const fileWithPages = Object.assign(file, { pageCount }) as FileWithPages
-          return fileWithPages
-        } catch (err) {
-          setError(`"${file.name}" is not a valid PDF file or is corrupted.`)
-          return null
+    // Check if all files are the same type
+    if (validFiles.length > 0) {
+      const firstType = validFiles[0].fileType
+      const allSameType = validFiles.every(f => f.fileType === firstType)
+      
+      if (!allSameType && files.length > 0) {
+        const existingType = files[0].fileType
+        if (existingType !== firstType) {
+          setError(`Please select files of the same type. Current files are ${existingType?.toUpperCase()}, but you're adding ${firstType?.toUpperCase()} files.`)
+          return
+        }
+      }
+
+      // Validate files based on type
+      Promise.all(
+        validFiles.map(async (file) => {
+          try {
+            if (file.fileType === 'pdf') {
+              const fileBytes = await file.arrayBuffer()
+              const pdf = await PDFDocument.load(fileBytes)
+              const pageCount = pdf.getPageCount()
+              return Object.assign(file, { pageCount }) as FileWithMetadata
+            } else if (file.fileType === 'csv') {
+              const text = await file.text()
+              const result = Papa.parse(text, { header: false, skipEmptyLines: true })
+              const rowCount = result.data.length
+              return Object.assign(file, { rowCount }) as FileWithMetadata
+            } else if (file.fileType === 'docx') {
+              // Validate DOCX by trying to read it
+              const arrayBuffer = await file.arrayBuffer()
+              await mammoth.extractRawText({ arrayBuffer })
+              return file
+            } else {
+              // DOC files - just accept them
+              return file
+            }
+          } catch (err) {
+            setError(`"${file.name}" is not a valid ${file.fileType?.toUpperCase()} file or is corrupted.`)
+            return null
+          }
+        })
+      ).then((validatedFiles) => {
+        const valid = validatedFiles.filter((f): f is FileWithMetadata => f !== null)
+        if (valid.length > 0) {
+          setFiles(prev => {
+            const combined = [...prev, ...valid]
+            const totalSize = combined.reduce((sum, f) => sum + f.size, 0)
+            const maxSize = 500 * 1024 * 1024
+            if (totalSize > maxSize) {
+              setError(`Total file size exceeds 500MB limit. Please select smaller files.`)
+              return prev
+            }
+            return combined
+          })
+          if (valid.length > 0 && invalidFiles.length === 0) {
+            setError(null)
+          }
         }
       })
-    ).then((validatedFiles) => {
-      const validFiles = validatedFiles.filter((f): f is FileWithPages => f !== null)
-      if (validFiles.length > 0) {
-        setFiles(prev => [...prev, ...validFiles])
-        setError(null)
-      }
-    })
+    }
   }, [files])
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -173,9 +263,118 @@ export default function Home() {
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [selectedFileIndex, files])
 
-  const mergePDFs = async () => {
+  // Merge PDFs
+  const mergePDFs = async (filesToMerge: FileWithMetadata[]) => {
+    const mergedPdf = await PDFDocument.create()
+    for (let i = 0; i < filesToMerge.length; i++) {
+      setMergeProgress({ current: i + 1, total: filesToMerge.length })
+      const file = filesToMerge[i]
+      const fileBytes = await file.arrayBuffer()
+      const pdf = await PDFDocument.load(fileBytes)
+      const pages = await mergedPdf.copyPages(pdf, pdf.getPageIndices())
+      pages.forEach((page) => {
+        mergedPdf.addPage(page)
+      })
+    }
+    return await mergedPdf.save()
+  }
+
+  // Merge CSV files
+  const mergeCSVs = async (filesToMerge: FileWithMetadata[]): Promise<string> => {
+    const allRows: string[][] = []
+    let headers: string[] | null = null
+
+    for (let i = 0; i < filesToMerge.length; i++) {
+      setMergeProgress({ current: i + 1, total: filesToMerge.length })
+      const file = filesToMerge[i]
+      const text = await file.text()
+      const result = Papa.parse<string[]>(text, { header: false, skipEmptyLines: true })
+      
+      if (result.data.length > 0) {
+        if (i === 0) {
+          headers = result.data[0]
+          allRows.push(...result.data)
+        } else {
+          // Skip header row for subsequent files
+          const dataRows = result.data.slice(1)
+          allRows.push(...dataRows)
+        }
+      }
+    }
+
+    // Ensure headers are included
+    if (headers && allRows.length > 0 && JSON.stringify(allRows[0]) !== JSON.stringify(headers)) {
+      allRows.unshift(headers)
+    }
+
+    return Papa.unparse(allRows)
+  }
+
+  // Merge Word documents
+  const mergeWordDocs = async (filesToMerge: FileWithMetadata[]): Promise<Uint8Array> => {
+    const paragraphs: Paragraph[] = []
+
+    for (let i = 0; i < filesToMerge.length; i++) {
+      setMergeProgress({ current: i + 1, total: filesToMerge.length })
+      const file = filesToMerge[i]
+      const arrayBuffer = await file.arrayBuffer()
+
+      if (file.fileType === 'docx') {
+        const result = await mammoth.extractRawText({ arrayBuffer })
+        const text = result.value
+        
+        // Split text into paragraphs
+        const lines = text.split('\n').filter(line => line.trim())
+        lines.forEach((line, idx) => {
+          paragraphs.push(
+            new Paragraph({
+              children: [new TextRun(line)],
+              spacing: { after: idx === lines.length - 1 ? 400 : 200 }
+            })
+          )
+        })
+
+        // Add page break between documents (except last)
+        if (i < filesToMerge.length - 1) {
+          paragraphs.push(
+            new Paragraph({
+              children: [new TextRun('')],
+              pageBreakBefore: true
+            })
+          )
+        }
+      } else {
+        // For .doc files, we can't easily parse them, so skip
+        paragraphs.push(
+          new Paragraph({
+            children: [new TextRun(`[Note: ${file.name} could not be processed - .doc format requires conversion to .docx]`)],
+            spacing: { after: 400 }
+          })
+        )
+      }
+    }
+
+    const doc = new Document({
+      sections: [{
+        properties: {},
+        children: paragraphs
+      }]
+    })
+
+    return await Packer.toBlob(doc).then(blob => blob.arrayBuffer()).then(buffer => new Uint8Array(buffer))
+  }
+
+  // Main merge function
+  const mergeFiles = async () => {
     if (files.length < 2) {
-      setError('Please select at least 2 PDF files to merge')
+      setError('Please select at least 2 files to merge')
+      return
+    }
+
+    // Check all files are same type
+    const firstType = files[0].fileType
+    if (!files.every(f => f.fileType === firstType)) {
+      setError('All files must be of the same type to merge. Please select files of the same format.')
       return
     }
 
@@ -185,50 +384,51 @@ export default function Home() {
     setMergeProgress({ current: 0, total: files.length })
 
     try {
-      const mergedPdf = await PDFDocument.create()
-      for (let i = 0; i < files.length; i++) {
-        setMergeProgress({ current: i + 1, total: files.length })
-        const file = files[i]
-        const fileBytes = await file.arrayBuffer()
-        const pdf = await PDFDocument.load(fileBytes)
-        const pages = await mergedPdf.copyPages(pdf, pdf.getPageIndices())
-        pages.forEach((page) => {
-          mergedPdf.addPage(page)
+      let blob: Blob
+      let filename: string
+      const fileType = firstType!
+
+      if (fileType === 'pdf') {
+        const mergedBytes = await mergePDFs(files)
+        const arrayBuffer = new ArrayBuffer(mergedBytes.length)
+        new Uint8Array(arrayBuffer).set(mergedBytes)
+        blob = new Blob([arrayBuffer], { type: 'application/pdf' })
+        filename = outputFilename.endsWith('.pdf') ? outputFilename : `${outputFilename}.pdf`
+      } else if (fileType === 'csv') {
+        const mergedCsv = await mergeCSVs(files)
+        blob = new Blob([mergedCsv], { type: 'text/csv' })
+        filename = outputFilename.endsWith('.csv') ? outputFilename : `${outputFilename}.csv`
+      } else if (fileType === 'docx' || fileType === 'doc') {
+        const mergedBytes = await mergeWordDocs(files)
+        blob = new Blob([mergedBytes], { 
+          type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' 
         })
+        filename = outputFilename.endsWith('.docx') ? outputFilename : `${outputFilename}.docx`
+      } else {
+        throw new Error('Unsupported file type')
       }
 
-      const mergedPdfBytes = await mergedPdf.save()
-      const arrayBuffer = new ArrayBuffer(mergedPdfBytes.length)
-      new Uint8Array(arrayBuffer).set(mergedPdfBytes)
-      const blob = new Blob([arrayBuffer], { type: 'application/pdf' })
       const url = URL.createObjectURL(blob)
-      
       const link = document.createElement('a')
       link.href = url
-      link.download = outputFilename.endsWith('.pdf') ? outputFilename : `${outputFilename}.pdf`
+      link.download = filename
       document.body.appendChild(link)
       link.click()
       document.body.removeChild(link)
       URL.revokeObjectURL(url)
 
-      setSuccess(`Successfully merged ${files.length} PDF files!`)
+      setSuccess(`Successfully merged ${files.length} ${fileType.toUpperCase()} files!`)
       setError(null)
       setTimeout(() => setSuccess(null), 5000)
     } catch (err) {
-      let errorMessage = 'Failed to merge PDFs. '
+      let errorMessage = `Failed to merge ${firstType?.toUpperCase()} files. `
       if (err instanceof Error) {
-        if (err.message.includes('password')) {
-          errorMessage += 'One or more PDFs are password-protected and cannot be merged.'
-        } else if (err.message.includes('corrupt')) {
-          errorMessage += 'One or more PDFs are corrupted.'
-        } else {
-          errorMessage += err.message
-        }
+        errorMessage += err.message
       } else {
-        errorMessage += 'Please ensure all files are valid PDF documents.'
+        errorMessage += 'Please ensure all files are valid.'
       }
       setError(errorMessage)
-      console.error('Error merging PDFs:', err)
+      console.error('Error merging files:', err)
     } finally {
       setIsMerging(false)
       setMergeProgress({ current: 0, total: 0 })
@@ -237,6 +437,20 @@ export default function Home() {
 
   const totalSize = files.reduce((sum, file) => sum + file.size, 0)
   const totalPages = files.reduce((sum, file) => sum + (file.pageCount || 0), 0)
+  const totalRows = files.reduce((sum, file) => sum + (file.rowCount || 0), 0)
+  const currentFileType = files.length > 0 ? files[0].fileType : null
+
+  // Update output filename extension based on file type
+  useEffect(() => {
+    if (currentFileType && files.length > 0) {
+      const ext = getDefaultExtension(currentFileType)
+      if (!outputFilename.endsWith(ext)) {
+        // Remove any existing extension and add the correct one
+        const nameWithoutExt = outputFilename.replace(/\.(pdf|csv|docx|doc)$/i, '')
+        setOutputFilename(nameWithoutExt + ext)
+      }
+    }
+  }, [currentFileType, files.length])
 
   return (
     <main className="min-h-screen relative overflow-hidden">
@@ -259,10 +473,10 @@ export default function Home() {
               </svg>
             </div>
             <h1 className="text-5xl sm:text-6xl font-extrabold mb-4 bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 dark:from-indigo-400 dark:via-purple-400 dark:to-pink-400 bg-clip-text text-transparent">
-              PDF Merger
+              File Merger
             </h1>
             <p className="text-xl sm:text-2xl text-gray-700 dark:text-gray-300 font-medium">
-              Combine multiple PDFs into one beautiful document
+              Merge PDFs, CSV files, and Word documents into one
             </p>
             <div className="flex items-center justify-center gap-6 mt-6 text-sm text-gray-600 dark:text-gray-400">
               <div className="flex items-center gap-2">
@@ -291,10 +505,10 @@ export default function Home() {
             <div className="bg-gradient-to-r from-indigo-50 via-purple-50 to-pink-50 dark:from-indigo-900/20 dark:via-purple-900/20 dark:to-pink-900/20 rounded-3xl p-8 sm:p-10 border border-indigo-200/50 dark:border-indigo-800/50 shadow-xl">
               <div className="text-center mb-8">
                 <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 dark:text-white mb-4">
-                  Why Choose Our PDF Merger?
+                  Why Choose Our File Merger?
                 </h2>
                 <p className="text-lg text-gray-600 dark:text-gray-300 max-w-2xl mx-auto">
-                  The most secure, fast, and user-friendly way to combine your PDF documents
+                  The most secure, fast, and user-friendly way to combine your PDF, CSV, and Word documents
                 </p>
               </div>
 
@@ -321,59 +535,20 @@ export default function Home() {
                   </div>
                   <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Completely Free</h3>
                   <p className="text-gray-600 dark:text-gray-300 text-sm leading-relaxed">
-                    No hidden fees, no subscriptions, no watermarks. Merge unlimited PDFs for free. No registration or account required.
+                    No hidden fees, no subscriptions, no watermarks. Merge unlimited files for free. No registration or account required.
                   </p>
                 </div>
 
-                {/* Fast & Efficient */}
-                <div className="bg-white/60 dark:bg-gray-800/60 backdrop-blur-sm rounded-2xl p-6 border border-white/50 dark:border-gray-700/50 hover:shadow-lg transition-all hover:scale-105">
-                  <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-pink-500 rounded-xl flex items-center justify-center mb-4 shadow-lg">
-                    <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                    </svg>
-                  </div>
-                  <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Lightning Fast</h3>
-                  <p className="text-gray-600 dark:text-gray-300 text-sm leading-relaxed">
-                    Process and merge PDFs instantly. No waiting for uploads or server processing. Everything happens locally in your browser.
-                  </p>
-                </div>
-
-                {/* Easy to Use */}
-                <div className="bg-white/60 dark:bg-gray-800/60 backdrop-blur-sm rounded-2xl p-6 border border-white/50 dark:border-gray-700/50 hover:shadow-lg transition-all hover:scale-105">
-                  <div className="w-12 h-12 bg-gradient-to-br from-orange-500 to-red-500 rounded-xl flex items-center justify-center mb-4 shadow-lg">
-                    <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                  </div>
-                  <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Super Easy</h3>
-                  <p className="text-gray-600 dark:text-gray-300 text-sm leading-relaxed">
-                    Drag and drop your files, click merge, and you're done. Intuitive interface with no learning curve. Perfect for everyone.
-                  </p>
-                </div>
-
-                {/* No Software Required */}
+                {/* Multiple Formats */}
                 <div className="bg-white/60 dark:bg-gray-800/60 backdrop-blur-sm rounded-2xl p-6 border border-white/50 dark:border-gray-700/50 hover:shadow-lg transition-all hover:scale-105">
                   <div className="w-12 h-12 bg-gradient-to-br from-indigo-500 to-purple-500 rounded-xl flex items-center justify-center mb-4 shadow-lg">
                     <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                     </svg>
                   </div>
-                  <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">No Installation</h3>
+                  <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Multiple Formats</h3>
                   <p className="text-gray-600 dark:text-gray-300 text-sm leading-relaxed">
-                    Works directly in your web browser. No downloads, no installations, no plugins. Access from any device, anywhere.
-                  </p>
-                </div>
-
-                {/* Professional Quality */}
-                <div className="bg-white/60 dark:bg-gray-800/60 backdrop-blur-sm rounded-2xl p-6 border border-white/50 dark:border-gray-700/50 hover:shadow-lg transition-all hover:scale-105">
-                  <div className="w-12 h-12 bg-gradient-to-br from-pink-500 to-rose-500 rounded-xl flex items-center justify-center mb-4 shadow-lg">
-                    <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
-                    </svg>
-                  </div>
-                  <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">High Quality Output</h3>
-                  <p className="text-gray-600 dark:text-gray-300 text-sm leading-relaxed">
-                    Maintains the original quality of your PDFs. All pages, formatting, and content are preserved perfectly in the merged document.
+                    Support for PDF, CSV, and Word documents. Merge files of the same type together seamlessly.
                   </p>
                 </div>
               </div>
@@ -385,7 +560,7 @@ export default function Home() {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
                   </svg>
                   <p className="text-white font-semibold">
-                    Start merging your PDFs now - it only takes seconds!
+                    Start merging your files now - it only takes seconds!
                   </p>
                 </div>
               </div>
@@ -443,7 +618,7 @@ export default function Home() {
                       {' '}or drag and drop
                     </p>
                     <p className="text-sm text-gray-500 dark:text-gray-400">
-                      PDF files only • Max 500MB total
+                      PDF, CSV, DOCX, or DOC files • Max 500MB total
                     </p>
                   </div>
                   <input
@@ -451,10 +626,10 @@ export default function Home() {
                     ref={fileInputRef}
                     type="file"
                     className="hidden"
-                    accept=".pdf,application/pdf"
+                    accept=".pdf,.csv,.docx,.doc,application/pdf,text/csv,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/msword"
                     multiple
                     onChange={handleFileSelect}
-                    aria-label="Upload PDF files"
+                    aria-label="Upload files"
                   />
                 </label>
               </div>
@@ -488,6 +663,23 @@ export default function Home() {
               </div>
             )}
 
+            {/* File Type Indicator */}
+            {currentFileType && files.length > 0 && (
+              <div className="mb-6 p-4 bg-gradient-to-r from-indigo-50 to-purple-50 dark:from-indigo-900/20 dark:to-purple-900/20 rounded-xl border border-indigo-200 dark:border-indigo-800 animate-fade-in">
+                <div className="flex items-center gap-3">
+                  <span className="text-2xl">{getFileTypeIcon(currentFileType)}</span>
+                  <div>
+                    <p className="font-semibold text-gray-900 dark:text-white">
+                      Merging {currentFileType.toUpperCase()} files
+                    </p>
+                    <p className="text-sm text-gray-600 dark:text-gray-300">
+                      All files must be of the same type
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Custom Filename */}
             {files.length >= 2 && (
               <div className="mb-6 animate-fade-in">
@@ -501,14 +693,14 @@ export default function Home() {
                     value={outputFilename}
                     onChange={(e) => setOutputFilename(e.target.value)}
                     className="w-full px-4 py-3 border-2 border-gray-300 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-4 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all shadow-sm"
-                    placeholder="merged.pdf"
-                    aria-label="Output filename for merged PDF"
+                    placeholder="merged"
+                    aria-label="Output filename"
                   />
-                  <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                    <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                    </svg>
-                  </div>
+                  {currentFileType && (
+                    <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                      <span className="text-gray-400 text-sm">{getDefaultExtension(currentFileType)}</span>
+                    </div>
+                  )}
                 </div>
               </div>
             )}
@@ -556,19 +748,10 @@ export default function Home() {
                       <div className="flex items-center flex-1 min-w-0">
                         <div className={`flex-shrink-0 w-12 h-12 rounded-lg flex items-center justify-center mr-4 transition-all ${
                           selectedFileIndex === index
-                            ? 'bg-gradient-to-br from-indigo-500 to-purple-500'
-                            : 'bg-red-100 dark:bg-red-900/30'
+                            ? `bg-gradient-to-br ${getFileTypeColor(file.fileType!)}`
+                            : 'bg-gray-100 dark:bg-gray-600'
                         }`}>
-                          <svg
-                            className={`w-6 h-6 ${
-                              selectedFileIndex === index ? 'text-white' : 'text-red-600 dark:text-red-400'
-                            }`}
-                            fill="currentColor"
-                            viewBox="0 0 20 20"
-                            aria-hidden="true"
-                          >
-                            <path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z" clipRule="evenodd" />
-                          </svg>
+                          <span className="text-2xl">{getFileTypeIcon(file.fileType!)}</span>
                         </div>
                         <div className="flex-1 min-w-0">
                           <span className="text-sm font-semibold text-gray-900 dark:text-white truncate block">
@@ -590,6 +773,17 @@ export default function Home() {
                                     <path fillRule="evenodd" d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm3 4a1 1 0 000 2h.01a1 1 0 100-2H7zm3 0a1 1 0 000 2h3a1 1 0 100-2h-3zm-3 4a1 1 0 100 2h.01a1 1 0 100-2H7zm3 0a1 1 0 100 2h3a1 1 0 100-2h-3z" clipRule="evenodd" />
                                   </svg>
                                   {file.pageCount} {file.pageCount === 1 ? 'page' : 'pages'}
+                                </span>
+                              </>
+                            )}
+                            {file.rowCount !== undefined && (
+                              <>
+                                <span>•</span>
+                                <span className="flex items-center gap-1">
+                                  <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                                    <path d="M3 4a1 1 0 011-1h12a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1V4zM3 10a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H4a1 1 0 01-1-1v-6zM14 9a1 1 0 00-1 1v6a1 1 0 001 1h2a1 1 0 001-1v-6a1 1 0 00-1-1h-2z" />
+                                  </svg>
+                                  {file.rowCount} {file.rowCount === 1 ? 'row' : 'rows'}
                                 </span>
                               </>
                             )}
@@ -652,6 +846,11 @@ export default function Home() {
                             • {totalPages} {totalPages === 1 ? 'page' : 'pages'}
                           </span>
                         )}
+                        {totalRows > 0 && (
+                          <span className="ml-3 text-green-600 dark:text-green-400">
+                            • {totalRows} {totalRows === 1 ? 'row' : 'rows'}
+                          </span>
+                        )}
                       </span>
                     </div>
                   </div>
@@ -687,10 +886,10 @@ export default function Home() {
 
             {/* Merge Button */}
             <button
-              onClick={mergePDFs}
+              onClick={mergeFiles}
               disabled={files.length < 2 || isMerging}
               className="w-full py-4 px-6 bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 hover:from-indigo-700 hover:via-purple-700 hover:to-pink-700 disabled:from-gray-400 disabled:via-gray-400 disabled:to-gray-400 disabled:cursor-not-allowed text-white font-bold text-lg rounded-xl transition-all duration-300 flex items-center justify-center gap-3 shadow-xl hover:shadow-2xl transform hover:scale-[1.02] disabled:transform-none disabled:hover:scale-100 focus:outline-none focus:ring-4 focus:ring-indigo-500/50 relative overflow-hidden group"
-              aria-label="Merge PDF files"
+              aria-label="Merge files"
             >
               <div className="absolute inset-0 shimmer-effect opacity-30" />
               {isMerging ? (
@@ -705,7 +904,7 @@ export default function Home() {
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                   </svg>
-                  <span className="relative z-10">Merging PDFs...</span>
+                  <span className="relative z-10">Merging Files...</span>
                 </>
               ) : (
                 <>
@@ -718,14 +917,14 @@ export default function Home() {
                   >
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
                   </svg>
-                  <span className="relative z-10">Merge PDFs</span>
+                  <span className="relative z-10">Merge Files</span>
                 </>
               )}
             </button>
 
             {files.length < 2 && files.length > 0 && (
               <p className="mt-4 text-sm text-center text-gray-500 dark:text-gray-400 font-medium">
-                Select at least one more PDF file to merge
+                Select at least one more file to merge
               </p>
             )}
 
@@ -778,10 +977,11 @@ export default function Home() {
                       </div>
                     </div>
                     <div className="flex-1">
-                      <h4 className="font-semibold text-gray-900 dark:text-white mb-2">Upload Your PDF Files</h4>
+                      <h4 className="font-semibold text-gray-900 dark:text-white mb-2">Upload Your Files</h4>
                       <p className="text-gray-600 dark:text-gray-300 text-sm leading-relaxed">
-                        Click the upload area or drag and drop your PDF files. You can select multiple files at once. 
-                        The tool supports up to 500MB total file size. Each PDF will be validated automatically.
+                        Click the upload area or drag and drop your files. Supported formats: PDF, CSV, DOCX, and DOC. 
+                        You can select multiple files at once, but all files must be of the same type to merge. 
+                        The tool supports up to 500MB total file size.
                       </p>
                     </div>
                   </div>
@@ -797,7 +997,7 @@ export default function Home() {
                       <h4 className="font-semibold text-gray-900 dark:text-white mb-2">Reorder Files (Optional)</h4>
                       <p className="text-gray-600 dark:text-gray-300 text-sm leading-relaxed">
                         Click on any file to select it, then use the up/down arrows to change the order. 
-                        Files will be merged in the order they appear in the list. You can also use keyboard shortcuts: 
+                        Files will be merged in the order they appear in the list. Use keyboard shortcuts: 
                         <kbd className="mx-1 px-2 py-1 bg-gray-200 dark:bg-gray-700 rounded text-xs">Alt+↑</kbd> and 
                         <kbd className="mx-1 px-2 py-1 bg-gray-200 dark:bg-gray-700 rounded text-xs">Alt+↓</kbd> to reorder.
                       </p>
@@ -815,7 +1015,7 @@ export default function Home() {
                       <h4 className="font-semibold text-gray-900 dark:text-white mb-2">Customize Output (Optional)</h4>
                       <p className="text-gray-600 dark:text-gray-300 text-sm leading-relaxed">
                         Once you have at least 2 files, you can customize the output filename. 
-                        Enter your desired name in the "Output Filename" field. The .pdf extension will be added automatically if you forget it.
+                        The correct file extension will be added automatically based on your file type.
                       </p>
                     </div>
                   </div>
@@ -828,10 +1028,10 @@ export default function Home() {
                       </div>
                     </div>
                     <div className="flex-1">
-                      <h4 className="font-semibold text-gray-900 dark:text-white mb-2">Merge Your PDFs</h4>
+                      <h4 className="font-semibold text-gray-900 dark:text-white mb-2">Merge Your Files</h4>
                       <p className="text-gray-600 dark:text-gray-300 text-sm leading-relaxed">
-                        Click the "Merge PDFs" button to combine all your files. You'll see a progress indicator 
-                        showing which file is being processed. Once complete, your merged PDF will automatically download.
+                        Click the "Merge Files" button to combine all your files. You'll see a progress indicator 
+                        showing which file is being processed. Once complete, your merged file will automatically download.
                       </p>
                     </div>
                   </div>
@@ -847,19 +1047,19 @@ export default function Home() {
                         <ul className="space-y-1.5 text-sm text-indigo-800 dark:text-indigo-300">
                           <li className="flex items-start gap-2">
                             <span className="text-indigo-500 mt-1">•</span>
+                            <span>All files must be of the same type (all PDFs, all CSVs, or all Word docs)</span>
+                          </li>
+                          <li className="flex items-start gap-2">
+                            <span className="text-indigo-500 mt-1">•</span>
                             <span>Use <kbd className="px-1.5 py-0.5 bg-indigo-100 dark:bg-indigo-900/50 rounded text-xs">Delete</kbd> key to quickly remove selected files</span>
                           </li>
                           <li className="flex items-start gap-2">
                             <span className="text-indigo-500 mt-1">•</span>
-                            <span>All processing happens in your browser - your files never leave your device</span>
+                            <span>CSV files will be combined by rows (headers from first file only)</span>
                           </li>
                           <li className="flex items-start gap-2">
                             <span className="text-indigo-500 mt-1">•</span>
-                            <span>Password-protected PDFs cannot be merged</span>
-                          </li>
-                          <li className="flex items-start gap-2">
-                            <span className="text-indigo-500 mt-1">•</span>
-                            <span>You can merge as many PDFs as you want (within the 500MB limit)</span>
+                            <span>Word documents (.doc) need to be converted to .docx for best results</span>
                           </li>
                         </ul>
                       </div>
